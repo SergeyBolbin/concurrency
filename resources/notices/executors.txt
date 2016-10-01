@@ -1,0 +1,71 @@
+Executor Framework
+---------------------
+
+public interface Executor {
+	void execute(Runnable command)
+}
+
+public interface ExecutorService extends Executor {
+	void shutdown()
+	List<Runnable> shutdownNow()
+	boolean isShutdown() // if this executor has been shut down. This method returns true if you have called the shutdown()
+							method of the executor 
+
+	boolean isTerminated() // if all tasks have completed following shut down (if you have called the shutdown() or
+							  shutdownNow() methods and the executor finishes the process of shutting it down.)
+	awaitTermination(long timeout, TimeUnit unit) // awaitTermination(long timeout, TimeUnit unit): This method blocks
+													the calling thread until the tasks of the executor have ended or the timeout occurs.
+													The TimeUnit class is an enumeration with the following constants: DAYS, HOURS,
+													MICROSECONDS, MILLISECONDS, MINUTES, NANOSECONDS, and SECONDS
+
+	submit(Callable<T> task)
+	submit(Runnable task)
+}
+
+ThreadPoolExecutor - 
+	
+	getPoolSize()
+	
+	getActiveCount()
+	
+	getCompletedTaskCount()
+	
+	shutdown():	
+		Critical aspect of the ThreadPoolExecutor class, and of the executors in general,
+		is that you have to end it explicitly. If you don't do this, the executor will continue its execution
+		and the program won't end. If the executor doesn't have tasks to execute, it continues waiting
+		for new tasks and it doesn't end its execution.
+
+		After you call the shutdown() method, if you try to send another task to the executor, 
+		it will be rejected and the executor will throw a RejectedExecutionException exception.
+
+	shutdownNow(): This method shut downs the executor immediately. It doesn't
+					execute the pending tasks. It returns a list with all these pending tasks. The tasks
+					that are running when you call this method continue with their execution, but the
+					method doesn't wait for their finalization.
+
+class Executors construct executors and other related objects.
+	newCachedThreadPool() 
+			// a thread pool that creates new threads as needed, but will reuse previously constructed threads when they are
+			//available These pools will typically improve the performance of programs that execute many short-lived asynchronous tasks.
+			// If no existing thread is available, a new thread will be created and added to the pool.
+			
+	newFixedThreadPool(int nThreads) 
+			// Creates a thread pool that reuses a fixed number of threads operating off a shared unbounded queue.
+			// If additional tasks are submitted when all threads are active, they will wait in the queue until a thread is available.
+			// If any thread terminates due to a failure during execution prior to shutdown, a new one will take its place if needed to execute subsequent tasks.
+	
+	newScheduledThreadPool(int corePoolSize) 
+		//Creates a thread pool that can schedule commands to run after a given delay, or to execute periodically.
+	
+	newSingleThreadScheduledExecutor() 
+		// single-threaded executor that can schedule commands to run after a given delay, or to execute periodically
+
+Thread Executor methods (additional):
+
+invokeAny() method of the ThreadPoolExecutor class receives a list of tasks, launches them, and returns the result
+			of the first task that finishes without throwing an exception.
+
+invokeAll() method receives a list of the Callable objects and returns a list of the Future objects. This list will have a Future
+			object per task in the list. The first object in the list of the Future objects will be the object that controls the 
+			first task in the list of the Callable objects, and so on

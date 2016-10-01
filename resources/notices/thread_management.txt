@@ -1,0 +1,155 @@
+Thread creation:
+- extend Thread class, override run()
+
+- building the class that implement Runnable: 
+	new Thread(() -> {...})
+	
+A Java program ends when all its threads finish (more specifically, when all its non-daemon threads finish)
+If one of the threads use the System.exit() instruction to end the execution of the program, all the threads end
+their execution.
+
+
+
+Thread can be in one of these six states: 
+-----------------------------------------
+http://www.javatpoint.com/life-cycle-of-a-thread
+
+* new -  Thread state for a thread which has not yet started.
+
+* runnable -  Thread state for a runnable thread.  A thread in the runnable state is executing in the Java virtual
+			  machine but it may be waiting for other resources from the operating system such as processor.
+
+* blocked - Thread state for a thread blocked waiting for a monitor lock.
+         A thread in the blocked state is waiting for a monitor lock to enter a synchronized block/method or 
+		 reenter a synchronized block/method after calling
+         {@link Object#wait() Object.wait}. 
+
+* waiting - Thread state for a waiting thread.
+            A thread is in the waiting state due to calling one of the
+            following methods:
+            <ul>
+				<li>{@link Object#wait() Object.wait} with no timeout</li>
+				<li>{@link #join() Thread.join} with no timeout</li>
+				<li>{@link LockSupport#park() LockSupport.park}</li>
+            </ul>
+
+* time waiting - Thread state for a waiting thread with a specified waiting time.
+				 A thread is in the timed waiting state due to calling one of
+				  the following methods with a specified positive waiting time:
+				  <ul>
+				    <li>{@link #sleep Thread.sleep}</li>
+				    <li>{@link Object#wait(long) Object.wait} with timeout</li>
+				    <li>{@link #join(long) Thread.join} with timeout</li>
+				    <li>{@link LockSupport#parkNanos LockSupport.parkNanos}</li>
+				    <li>{@link LockSupport#parkUntil LockSupport.parkUntil}</li>
+				 </ul>
+
+* terminated - Thread state for a terminated thread.The thread has completed execution.
+
+
+Thread interruption:
+-----------------------------------
+
+Thread
+public static boolean interrupted() The interrupted status of the thread is cleared by this method 
+public boolean isInterrupted()  The interrupted status of the thread is unaffected by this method.
+
+Interrupted() is static and checks the current thread. 
+isInterrupted() is an instance method which checks the Thread object that it is called on.
+(http://stackoverflow.com/questions/1904072/java-difference-in-usage-between-thread-interrupted-and-thread-isinterrupted#1904072)
+
+For more complex cases: 
+Java provides the InterruptedException exception for this purpose. 
+You can throw this exception when you detect the interruption of the thread and catch it in the run() method.
+
+
+Thread sleeping and resuming
+-------------------------------------
+
+Sleep:
+Thread.sleep(int msec)
+sleep() method of an element of the TimeUnit
+
+When Thread is sleeping and is interrupted, the method throws an InterruptedException exception
+ immediately and doesn't wait until the sleeping time finishes.
+ 
+Thread.yield() - indicates to the JVM that the Thread object can leave the CPU for other tasks. 
+
+Thread join
+----------------------------------------
+When we call this method using a thread object, it suspends the execution of the calling thread until the object
+called finishes its execution.
+
+join (long milliseconds)
+join (long milliseconds, long nanos) //не падает с эксепшном по таймауту, продолжает работу по окончании таймаута, либо по завершении работы ожиаемого треда
+
+(When one of these two conditions is true, the join() method returns)
+
+
+Daemon Thread
+----------------------------------------
+have very low priority and normally only executes when no other thread of the same program is running.
+When daemon threads are the only threads running in a program, the JVM ends the program finishing these threads.
+typical example of these kind of threads is the Java garbage collector.
+call the setDaemon() method before  call the start() method
+
+Processing Exceptions
+-----------------------------------------
+thread.setUncaughtExceptionHandler
+
+When an exception is thrown in a thread and is not caught (it has to be an unchecked
+exception), the JVM checks if the thread has an uncaught exception handler set by the
+corresponding method. If it has, the JVM invokes this method with the Thread object and
+Exception as arguments.
+
+First, it looks for the uncaught exception handler of the Thread objects as we learned in this
+recipe. If this handler doesn't exist, then the JVM looks for the uncaught exception handler
+for ThreadGroup of the Thread objects as was explained in the Processing uncontrolled
+exceptions in a group of threads recipe. If this method doesn't exist, the JVM looks for the
+default uncaught exception handler as we learned in this recipe.
+If none of the handlers exits, the JVM writes the stack trace of the exception in the console
+and exits the program.
+
+Thread Local 
+-----------------------------------------------------
+
+Thread-local variables store a value of an attribute for each Thread that uses one of these
+variables. You can read the value using the get() method and change the value using the
+set() method. 
+
+The first time you access the value of a thread-local variable, if it has no value
+for the Thread object that it is calling, the thread-local variable calls the initialValue()
+method to assign a value for that Thread and returns the initial value.
+
+private static ThreadLocal<Date> startDate = new ThreadLocal<Date>() {
+ protected Date initialValue(){
+  return new Date();
+  }
+};
+
+The thread-local class also provides the remove() method that deletes the value stored in
+the thread-local variable for the thread that it's calling.
+
+Static always - 
+Because if it were an instance level field, then it would actually be "Per Thread - Per Instance", not just a guaranteed "Per Thread." That isn't normally the semantic you're looking for. 
+(http://stackoverflow.com/questions/2784009/why-should-java-threadlocal-variables-be-static)
+
+The thread-local class also provides the remove() method that deletes the value stored in
+the thread-local variable for the thread that it's calling.
+
+The Java Concurrency API includes the InheritableThreadLocal class that provides
+inheritance of values for threads created from a thread. If a thread A has a value in a threadlocal
+variable and it creates another thread B, the thread B will have the same value as the
+thread A in the thread-local variable. You can override the childValue() method that is
+called to initialize the value of the child thread in the thread-local variable. It receives the
+value of the parent thread in the thread-local variable as a parameter.
+
+ThreadGroup
+------------------------------------------------
+A thread group represents a set of threads. 
+In addition, a thread group can also include other thread groups. 
+The thread groups form a tree in which every thread group except the initial thread group has a parent. 
+
+Thread Factory 
+------------------------------------------------
+Java provides an interface, the ThreadFactory interface to implement a Thread object factory. 

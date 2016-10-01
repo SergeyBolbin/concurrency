@@ -22,7 +22,7 @@ public class InvokeAllExample {
 
         List<Future<Long>> futures = Collections.EMPTY_LIST;
         try {
-            futures = pool.invokeAll(tasks);
+            futures = pool.invokeAll(tasks); // already await finishing all tasks. no need to check status
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

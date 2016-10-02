@@ -1,0 +1,13 @@
+Java provides two kinds of collections to use in concurrent applications:
+
+Blocking collections:
+    If the operation can't be made immediately, because the collection is full or
+    empty, the thread that makes the call will be blocked until the operation can
+    be made.
+
+Non-blocking collections:
+    If the operation can't be made immediately, the operation returns a
+    null value or throws an exception, but the thread that makes the call won't
+    be blocked.
+
+    ConcurrentLinkedDeque

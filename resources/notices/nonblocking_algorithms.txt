@@ -1,0 +1,55 @@
+N-B Algorithms:
+--------------------------------------
+
+use low-level atomic machine instructions such as compareand-swap instead of locks to ensure data integrity under concurrent access
+
+Locking disadvantages:
+    Suspending and resuming a thread has a lot of overhead and generally entails a lengthy interruption
+    When a thread is waiting for a lock, it cannot do anything else
+    (a serious problem if the blocked thread is a high-priority
+     thread but the thread holding the lock is a lower-priority thread = priority inversion)
+
+Volatile disadvantages:
+    Volatile variables are a lighter-weight synchronization mechanism than locking because they do not involve context switches or thread scheduling
+    However, volatile variables have some limitations compared to locking:
+    while they provide similar visibility guarantees, they cannot be used to construct atomic compound actions.
+    they cannot be used to reliably implement common tools such as counters or mutexes
+    In order to not lose an update, the entire read-modify-write operation must be atomic
+
+Hardware support for concurrency
+------------------------------------------
+Exclusive locking - pessimistic approach
+
+Optimistic approach:
+collision detection to determine if there has been interference from other parties during the update,
+in which case the operation fails and can be retried
+
+Early processors atomic operations (for impl. mutexes): test-and-set, fetch-and-increment, or swap
+Modern read-modify-write instructions: compare-and-swap or load-linked/store-conditional
+
+Sparc, IA32: CAS
+PowerPC: load-linked + store-conditional
+
+Compare and swap
+--------------------
+operands:
+V - memory location
+B - old value expected
+A - new value to set
+
+Atomically update V by value of B if the current value of V matches to the expected value A
+otherwise does nothing
+In either case, it returns the value currently in V.
+
+The typical pattern for using CAS is first to read the value A from V, derive
+the new value B from A, and then use CAS to atomically change V from A to
+B so long as no other thread has changed V to another value in the meantime.
+CAS addresses the problem of implementing atomic read-modify-write sequences
+without locking, because it can detect interference from other threads.
+
+CAS is an optimistic technique—it proceeds with the update in the hope of success
+When multiple threads attempt to update the same variable simultaneously using CAS,
+one wins and updates the variable’s value, and the rest lose
+
+Because a thread that loses a CAS is not blocked, it can decide
+whether it wants to try again, take some other recovery action, or do nothing

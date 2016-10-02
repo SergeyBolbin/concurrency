@@ -54,6 +54,9 @@ class ExecutableTask implements Callable<String> {
     }
 }
 
+/**
+ * Wrapped around the Execution Task
+ */
 class ResultTask extends FutureTask<String> {
 
     private String name;

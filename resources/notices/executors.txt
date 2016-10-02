@@ -69,3 +69,51 @@ invokeAny() method of the ThreadPoolExecutor class receives a list of tasks, lau
 invokeAll() method receives a list of the Callable objects and returns a list of the Future objects. This list will have a Future
 			object per task in the list. The first object in the list of the Future objects will be the object that controls the 
 			first task in the list of the Callable objects, and so on
+
+ScheduledThreadPoolExecutor
+-------------------------------------------
+
+public interface ScheduledFuture
+
+To execute a task in this scheduled executor after a period of time, you have to use the
+schedule() method.
+
+ScheduledFuture<?> result=executor.scheduleAtFixedRate(task, 1, 2, TimeUnit.SECONDS);
+
+public ScheduledFuture<?> scheduleAtFixedRate(Runnable command, long initialDelay, long period,  TimeUnit unit);
+
+Cancelling task execution:
+
+Future:
+boolean cancel(boolean mayInterruptIfRunning);
+
+Depending on the parameter of the cancel() method and the status of the task, the behavior of this method is different:
+
+If the task is waiting in the executor to get a Thread object that will execute it,
+the task is canceled and never begins its execution. If the task is already running,
+it depends on the parameter of the method. The cancel() method receives a
+Boolean value as a parameter. If the value of that parameter is true and the task
+is running, it will be canceled. If the value of the parameter is false and the task is
+running, it won't be canceled.
+
+If you use the get() method of a Future object that controls a task that has been canceled,
+the get() method will throw a CancellationException exception.
+
+
+class FutureTask<V> implements RunnableFuture<V>
+------------------------------------------------------
+A cancellable asynchronous computation.  This class provides a base implementation of {@link Future},
+with methods to start and cancel a computation
+
+The FutureTask class provides a method called done() that allows you to execute some code after the finalization
+of a task executed in an executor. It can be used to make som post-process operations, generating a report,
+sending results by e-mail, or releasing some resources.
+
+This method is called internally by the FutureTask class when the execution of
+the task that this FutureTask object is controlling finishes. The method is called after the
+result of the task is set and its status is changed to the isDone status, regardless of whether
+the task has been canceled or finished normally.
+
+By default, this method is empty. You can override the FutureTask class and implement this
+method to change this behavior. In this recipe, you will learn how to override this method to
+execute code after the finalization of the tasks.

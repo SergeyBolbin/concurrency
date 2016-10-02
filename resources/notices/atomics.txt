@@ -1,1 +1,0 @@
-Atomic variables offer the same memory semantics as volatile variables, but with additional support for atomic updates.

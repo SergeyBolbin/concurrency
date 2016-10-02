@@ -53,3 +53,34 @@ one wins and updates the variable’s value, and the rest lose
 
 Because a thread that loses a CAS is not blocked, it can decide
 whether it wants to try again, take some other recovery action, or do nothing
+
+The primary disadvantage of CAS is that it forces the caller to
+deal with contention (by retrying, backing off, or giving up), whereas locks deal
+with contention automatically by blocking until the lock is available
+
+
+Atomics
+-------------------
+
+Atomic variables are finer-grained and lighter-weight than locks,
+are critical for implementing high-performance concurrent code on multiprocessor systems
+
+The fast (uncontended) path for updating an atomic variable is no slower than the fast path for acquiring a lock, and usually faster;
+the slow path is definitely faster than the slow path for locks because it does not involve suspending and rescheduling threads.
+
+The atomic variable classes provide a generalization of volatile variables to support atomic conditional read-modify-write operations
+AtomicXXX provides get and set methods with the same memory semantics as reads and writes to a volatile XXX
+also contans compareAndSet(XXX expect, XXX update) methods
+
+There are twelve atomic variable classes, divided into four groups:
+    - scalars,
+    - field updaters,
+    - arrays, and
+    - compound variables
+
+Scalars: AtomicInteger, AtomicLong, AtomicBoolean, and AtomicReference. All support CAS;
+
+The atomic array classes (available in Integer, Long, and Reference versions) are arrays whose elements can be updated atomically
+The volatile array has volatile semantics only for the array reference, not for its elements.
+The primitive wrapper classes are immutable whereas the atomic variable classes are mutable
+also do not redefine hashCode or equals; each instance is distinct

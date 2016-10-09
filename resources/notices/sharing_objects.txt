@@ -1,0 +1,142 @@
+Stale data:
+------------------------------------------
+When the reader thread examines ready, it may see an out of date value
+Unless sync is used every time when a variable is accessed
+Staleness is not all-or-nothing: a thread can see up to data value of one var, but staled value of another, that was written first
+
+Reading without sync == READ_UNCOMMITED
+
+out-of-thin-air-safety - when a T reads variable without sync, at keast it sees value that was placed by any thread, raher
+then random value. Non-guarantee for 64-bit types (double, long) that are not declared volatile
+
+JVM permitted to perform a 64-bit read and write as 2 32-bit
+If the reads and writes occur in other threads, it is possible to read a nonvolatile long and
+get back the high 32 bits of  one value and the low 32 bits of another
+
+
+Syncronized guarantee:
+----------------------------------------------
+When  thread  A  executes  a  synchronized block,  and  subsequently  thread  B  enters a
+synchronized block guarded by the same lock, the values of variables that were visible to A prior to releasing the lock
+are guaranteed to be visible to B upon acquiring the lock.
+Everything A did in or prior to a synchronized block is visible to B when it executes a
+synchronized block guarded by the same lock. Without synchronization, there is
+no such guarantee.
+
+
+Publishing
+
+Publishing an object means making it available to code outside of its current scope, such as by storing a reference to it
+where other code can find it, returning it from a non-private method, or passing it to a method in another class.
+
+Thread Confinement
+---------------------------------------------------------------------------------
+If data is only accessed from a single thread,no synchronization is needed.
+Example: JDBC connection pool, Stateless Beans etc, Swing event thread
+
+- Ad-hock Thread Confinement (when the responsibility for maintaining thread confinement falls entirely on the implementation)
+- Stack Thread Confinement (local variable esist on the current thread's stack which is not accessible for another thread)
+- ThreadLocal associate per-thred value with a value-holding object
+
+Immutability
+---------------------------------------------------------------------------------------
+An  immutable  object  is  one  whose  state  cannot  be  changed  after  construction.
+Immutable  objects  are  inherently thread safe;
+their invariants are established by the constructor, and if their state cannot be changed, these invariants always hold.
+
+An object is immutable if:
+- Its state cannot be modified after construction;
+- All its fields are final;[12] and
+- It is properly constructed (the this reference does not escape during construction).
+
+Immutable objects, on  the  other hand, can be  safely  accessed even when  synchronization  is  not used  to  publish  the
+object reference. For this guarantee of initialization safety to hold, all of the requirements for immutability must be met:
+unmodifiable  state,  all  fields  are  final,  and  proper  construction.
+
+This guarantee extends to the values of all final fields of properly constructed objects; final fields can be safely accessed
+without additional synchronization. However, if final fields refer to mutable objects, synchronization is still required to
+access the state of the objects they refer to.
+
+
+Safe Publication Idioms
+-----------------------------------------------------------------------------------------
+
+A properly constructed object can be safely published by:
+ - Initializing an object reference from a static initializer;
+ - Storing a reference to it into a volatile field or AtomicReference;
+ - Storing a reference to it into a final field of a properly constructed object; or
+ - Storing a reference to it into a field that is properly guarded by a lock.
+
+
+Volatile variables
+------------------------------------------------------------------------------------------
+When a field is declared volatile, the compiler and
+runtime  are  put on  notice  that  this  variable  is  shared  and  that  operations  on  it  should  not  be  reordered  with  other
+memory  operations.  Volatile  variables  are  not  cached  in  registers  or  in  caches  where  they  are  hidden  from  other
+processors, so a read of a volatile variable always returns the most recent write by any thread.
+
+Volatile variables can be used for other
+kinds of state information, but more care is required when attempting this. For example, the semantics of volatile are
+not strong enough to make the  increment operation  (count++) atomic, unless you can guarantee  that the  variable  is
+written only from a single thread.
+
+ Volatile
+ ------------------------------------------
+ updates to a variable are propagated predictably to other threads.
+ operations on it should not be reordered with other mem operations
+ are not caches on registers or in cache processors
+
+ When thread A writes to
+ a volatile variable and subsequently thread B reads that same variable, the values of all variables that were visible to A
+ prior to writing to the volatile variable become visible to B after reading the volatile variable. So
+
+ writing a volatile variable is like exiting a synchronized block and reading a volatile variable is like entering
+ a synchronized block.
+
+ The  most  common  use  for  volatile  variables  is  as  a completion, interruption, or status flag
+
+ You can use volatile variables only when all the following criteria are met:
+     - Writes  to  the  variable  do  not  depend  on  its  current  value,  or  you  can  ensure  that  only  a  single  thread  ever
+     updates the value;
+     - The variable does not participate in invariants with other state variables; and
+     - Locking is not required for any other reason while the variable is being accessed.
+
+-------------------------------------------------------------------------------------------
+The internal synchronization in thread safe collections means that placing an object in a thread safe collection,
+such as a  Vector  or  synchronizedList,  fulfills  the  last  of  these  requirements.
+
+If  thread  A  places  object  X  in  a  thread safe  collection and  thread B  subsequently  retrieves  it, B  is  guaranteed  to  see  the  state  of X  as A  left  it,  even  though  the
+application code that hands X off in this manner has no explicit synchronization.
+
++ Placing a key or value in a Hashtable, synchronizedMap, or Concurrent-Map safely publishes it to any thread
+that retrieves it from the Map (whether directly or via an iterator);
+
++ Placing  an  element  in  a  Vector,  CopyOnWriteArrayList,  CopyOnWrite-ArraySet,  synchronizedList,  or
+synchronizedSet safely publishes it to any thread that retrieves it from the collection;
+
++ Placing  an  element on  a  BlockingQueue  or  a  ConcurrentLinkedQueue  safely  publishes  it  to  any  thread  that
+retrieves it from the queue.
+
+Static initializers
+-----------------------------------------------------------------------------------------------
+Static initializers are executed by the JVM at class initialization time; because of internal synchronization in the JVM, this
+mechanism is guaranteed to safely publish any objects initialized in this way
+
+Effectively Immutable Objects
+------------------------------------------------------------------------------------------------
+Objects that are not technically immutable, but whose state will not be modified after publication, are called effectively
+immutable. They do not need to meet the strict definition of immutability in Section 3.4; they merely need to be treated
+by the program as  if they were immutable  after  they are published.  Using  effectively immutable  objects can  simplify
+development and improve performance by reducing the need for synchronization.
+
+---------------------------
+The most useful policies for using and sharing objects in a concurrent program are:
+Thread-confined. A thread?confined object is owned exclusively by and confined to one thread, and can be modified by
+its owning thread.
+Shared  read-only.  A  shared  read?only  object  can  be  accessed  concurrently  by  multiple  threads  without  additional
+synchronization,  but  cannot  be  modified  by  any  thread.  Shared  read?only  objects  include  immutable  and  effectively
+immutable objects.
+Shared  thread-safe. A  thread?safe  object performs  synchronization  internally, so  multiple  threads can  freely  access  it
+through its public interface without further synchronization.
+Guarded.  A  guarded  object  can  be  accessed  only  with  a  specific  lock  held.  Guarded  objects  include  those  that  are
+encapsulated within other thread?safe objects and published objects that are known to be guarded by a specific lock.

@@ -267,4 +267,3 @@ arriveAndAwaitAdvance() - Arrives at this phaser and awaits others
 The onAdvance() method returns a Boolean value that indicates if the phaser has
 terminated or not. If the phaser returns a false value, it indicates that it hasn't terminated,
 so the threads will continue with the execution of other phases
-

@@ -11,3 +11,63 @@ Non-blocking collections:
     be blocked.
 
     ConcurrentLinkedDeque
+
+
+Synchronized collections
+------------------------------------
+
+    - Vector
+    - Hashtable
+    - Collections.synchronizedXXX
+
+These classes achieve thread safety by encapsulating their state and synchronizing every public method so that only one
+thread at a time can access the collection state.
+
+Vector confusion example:
+
+    Th1 // ArrayOutOfBounds... may be thrown if th2 executed before
+
+    public static Object getLast(Vector list) {
+    int lastIndex = list.size() - 1;
+    return list.get(lastIndex);
+    }
+
+
+    Th2
+    public static void deleteLast(Vector list) {
+    int lastIndex = list.size() - 1;
+    list.remove(lastIndex);
+    }
+
+Fail-fast iterators
+------------------------------------------------------------------------------------
+
+The iteration idiom relies on a leap of faith that other threads will not modify the Vector between the calls to size and
+get.
+When  other  threads  may  concurrently  modify  the  Vector  it  can  lead  to  trouble.
+Just  as  with  getLast,  if  another  thread  deletes  an  element  while  you  are  iterating  through  the  Vector
+and  the  operations  are  interleaved  unluckily,  this  iteration  idiom  throws ArrayIndexOutOfBoundsException.
+
+    //need to be externally synchronized
+    for (int i = 0; i < vector.size(); i++)
+        doSomething(vector.get(i));
+
+The iterators returned by the synchronized collections - fail-fast
+if they detect that the collection has changed since iteration began, they throw the
+unchecked ConcurrentModificationException
+
+if the modification count changes during iteration, hasNext or next 
+throws ConcurrentModificationException. However, this check is done without synchronization, so there is a risk of 
+seeing a stale value of the modification count and therefore that the iterator does not realize a modification has been 
+made
+There are several reasons, however, why locking a  collection during iteration may be undesirable:
+
+Other threads that need to access the collection will block until the iteration is complete;
+    If the collection is locked is being called with a lock held, which is a risk factor for deadlock
+    Starvation or deadlock risk: locking collections for significant periods of time hurts application scalability.
+    The longer a lock is held, the  more likely it is to be contended, and if many  threads are blocked waiting for a lock throughput and CPU utilization can
+    suffer.
+
+An alternative to locking the collection during iteration is to clone the collection and iterate the copy instead. Since the
+clone  is  thread-confined,  no  other  thread  can  modify  it  during  iteration,  eliminating  the  possibility  of
+ConcurrentModificationException.

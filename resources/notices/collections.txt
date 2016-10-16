@@ -95,7 +95,150 @@ ConcurrentHashMap is a hash-based Map
         A weakly consistent iterator can tolerate concurrent modification, traverses elements as they existed when the iterator
         was constructed, and may (but is not guaranteed to) reflect modifications to the collection after the construction of the
         iterator.
-
+    - no lock when adding to empty bin required (sync. only for modify operations)
     - size is allwoed to return approx. value instead of exact count
     - concurrent collections should be expected to change their contents continuously
     - if application  needs  to  lock  the  map  for  exclusive  access  ConcurrentHashMap  is not  an  appropriate
+
+    The implementation of ConcurrentHashMap uses an array of 16 locks, each of  which guards 1/16 of the hash buckets;
+    bucket N  is guarded by  lock N mod 16. Assuming the hash function provides
+    reasonable spreading characteristics and keys are accessed uniformly, this should reduce the demand for any given lock
+    by approximately a factor of 16.
+
+    One of the downsides of lock striping is that locking the collection for exclusive access is more difficult and costly than
+    with a single lock. Usually an operation can be performed by acquiring at most one lock, but occasionally you need to
+    lock the entire collection, as when ConcurrentHashMap needs to expand the map and rehash the values into a larger set
+    of buckets. This is typically done by acquiring all of the locks in the stripe set.
+
+
+    ConcurrentHashMap is designed to optimize retrieval operations; in fact, successful get() operations usually succeed with no locking at all.
+    ConcurrentReaderHashMap class offers similar multiple-reader concurrency, but allows only a single active writer
+    Iterators returned by ConcurrentHashMap.iterator() will return each element once at most and will not ever throw ConcurrentModificationException
+    but may or may not reflect insertions or removals that occurred since the iterator was constructed.
+
+    http://www.ibm.com/developerworks/ru/library/j-jtp08223/
+    Вместо того, чтобы предполагать монопольность и непротиворечивость, связанный список, используемый ConcurrentHashMap,
+    тщательно спроектирован так, что реализация может выявлять, что её представление списка является противоречивым или устаревшим.
+    Если она обнаруживает, что её представление является противоречивым или устаревшим или просто не обнаруживает искомую запись,
+    она затем синхронизируется с соответствующей блокировкой бакета и снова ищет в цепочке. Это оптимизирует поиск для общего случая,
+    где большинство извлечений являются успешными, а количество извлечений превосходит вставки и удаления.
+
+    Можно избежать одного значительного источника противоречивости, делая элементы Entry почти неизменяемыми - все поля являются
+    финальными, кроме поля значения, которое является изменяемым. Это означает, что элементы не могут быть добавлены или удалены из
+     середины или конца цепочки хэшей - элементы могут быть добавлены только в начало,
+    а удаление включает в себя клонирование всей или части цепочки и обновление указателя на начало списка.
+
+    Так, если у вас имеется ссылка, указывающая в цепочку хэшей, вы точно знаете, что оставшаяся часть списка не изменит свою структуру
+
+    Операции извлечения
+    -------------------------
+    Операции извлечения осуществляются путём отыскания сперва указателя на начало для желаемого бакета
+    (что делается без блокировки, поэтому он может оказаться устаревшим), а затем обхода цепочки бакета без получения
+    блокировки для этого бакета. Если не удается найти искомое значение, то выполняется синхронизация и попытка вновь
+    найти запись:
+
+    public Object get(Object key) {
+        int hash = hash(key);     // throws null pointer exception if key is null
+
+        // Try first without locking...
+        Entry[] tab = table;
+        int index = hash & (tab.length - 1);
+        Entry first = tab[index];
+        Entry e;
+
+        for (e = first; e != null; e = e.next) {
+          if (e.hash == hash && eq(key, e.key)) {
+            Object value = e.value;
+            // null values means that the element has been removed
+            if (value != null)
+              return value;
+            else
+              break;
+          }
+        }
+
+        // Recheck under synch if key apparently not there or interference
+        Segment seg = segments[hash & SEGMENT_MASK];
+        synchronized(seg) {
+          tab = table;
+          index = hash & (tab.length - 1);
+          Entry newFirst = tab[index];
+          if (e != null || first != newFirst) {
+            for (e = newFirst; e != null; e = e.next) {
+              if (e.hash == hash && eq(key, e.key))
+                return e.value;
+            }
+          }
+          return null;
+        }
+      }
+
+    Удаление
+    ---------------------
+    Поскольку поток может видеть устаревшие значения для указателей на связи в цепочке хэшей,
+    простого удаления элемента из цепочки будет недостаточно, чтобы убедиться в том, что другие потоки не будут продолжать
+    видеть удаленное значение при выполнении поиска.
+
+    Напротив удаление является двухступенчатым процессом - сначала отыскивается подходящий объект Entry
+    и его поле значения устанавливается на null, а затем часть цепочки от начала до удалённого элемента клонируется и
+    присоединяется к оставшейся части цепочки, следующей за удаленным элементом.
+
+    Поскольку поле значения является изменчивым, если другой поток просматривает просроченную цепочку в поисках удалённого элемента,
+    то он сразу же увидит поле с нулевым значением, и будет знать о необходимости повтора извлечения с синхронизацией.
+    В конечном счёте, начальная часть цепочки хэшей, заканчивающаяся в удаленном элементе, будет утилизирована.
+
+    Вставка и изменение
+    -----------------------------\
+
+    Реализация put() является простой. Как и remove(), put() удерживает блокировку бакета на протяжении своего выполнения,
+    но поскольку get() не всегда нуждается в блокировке, то это не обязательно блокирует выполнение читающих процессов
+    (также не блокируются и другие записывающие процессы от доступа к другим бакетам).
+
+    Сначала put() ищет желаемый ключ в соответствующей цепочке хэшей. Если он найден, то поле value
+    (являющееся изменяемым) просто обновляется. Если же он не найден, то создается новый объект Entry для описания нового
+    отображения и вставляется в начало списка для этого бакета:
+
+    int hash = hash(key);
+        Segment seg = segments[hash & SEGMENT_MASK];
+
+        synchronized(seg) {
+          Entry[] tab = table;
+          int index = hash & (tab.length-1);
+          Entry first = tab[index];
+          Entry e = first;
+
+          for (;;) {
+            if (e == null)
+              return null;
+            if (e.hash == hash && eq(key, e.key))
+              break;
+            e = e.next;
+          }
+
+          Object oldValue = e.value;
+          if (value != null && !value.equals(oldValue))
+            return null;
+
+          e.value = null;
+
+          Entry head = e.next;
+          for (Entry p = first; p != e; p = p.next)
+            head = new Entry(p.hash, p.key, p.value, head);
+          tab[index] = head;
+          seg.count-;
+          return oldValue;
+        }
+      }
+
+      Динамическое изменение размеров
+      По мере увеличения числа элементов в map-таблице, цепочки хэшей будут удлиняться, а время извлечения увеличиваться. В определенный момент имеет смысл увеличить количество бакетов и перехэшировать значения. В таких классах, как Hashtable, это легко, потому что есть возможность удерживать монопольную блокировку всей map-таблицы. В ConcurrentHashMap каждый раз, когда вставляется запись, если длина этой цепочки превышает некоторый порог, цепочка помечается, как нуждающаяся в изменении размеров. Когда достаточное количество цепочек сообщают, что требуется изменение размеров, ConcurrentHashMap использует рекурсию для получения блокировки для каждого бакета и перехэширует элементы из каждого бакета в новую хэш-таблицу большего размера. В большинстве случаев это будет происходить автоматически и прозрачно для вызывающей стороны.
+
+    Weakly consistent iterators
+    --------------------------------
+    Когда пользователь вызывает keySet().iterator(), чтобы извлечь итератор для набора хэш-ключей, реализация быстро выполняет
+    синхронизацию, чтобы удостовериться, что указатели начала для каждой цепочки являются актуальными.
+    Операции next() и hasNext() описаны понятным образом, просматривают каждую цепочку хэшей, а затем переходят к следующей
+    цепочке до тех пор, пока не будут просмотрены все цепочки. Слабо связные итераторы могут отражать, а могут и не отражать
+    вставки, сделанные во время итерации, но они, разумеется, будут отражать обновления или удаления для ключей, до которых
+    ещё не добрался итератор, и не вернут ни одно значение больше одного раза. Итераторы, возвращаемые ConcurrentHashMap,
+    не будут генерировать ConcurrentModificationException.

@@ -71,3 +71,31 @@ Other threads that need to access the collection will block until the iteration 
 An alternative to locking the collection during iteration is to clone the collection and iterate the copy instead. Since the
 clone  is  thread-confined,  no  other  thread  can  modify  it  during  iteration,  eliminating  the  possibility  of
 ConcurrentModificationException.
+
+Concurrent collections
+-----------------------------------------
+
+ConcurrentHashMap
+CopyOnWriteArrayList
+Queue -> BlockingQueue
+
+ConcurrentSkipListMap concurrent replacement for sync SortedMap
+ConcurrentSkipListSet concurrent replacement for sync SortedSet
+
+ConcurrentHashMap
+-----------------
+ConcurrentHashMap is a hash-based Map
+
+    - uses Lock striping instead of sync every method on common lock
+    - readers can access map concurrently with writers
+    - a limited number of writers can modify map concurrently
+    - little perf penalty for single-th access
+    - weakly-consistent iterators (instead of fail-fast, do not throw ConcurrentModificationException)
+
+        A weakly consistent iterator can tolerate concurrent modification, traverses elements as they existed when the iterator
+        was constructed, and may (but is not guaranteed to) reflect modifications to the collection after the construction of the
+        iterator.
+
+    - size is allwoed to return approx. value instead of exact count
+    - concurrent collections should be expected to change their contents continuously
+    - if application  needs  to  lock  the  map  for  exclusive  access  ConcurrentHashMap  is not  an  appropriate

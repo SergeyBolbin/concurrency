@@ -13,7 +13,7 @@ public final class TaskDistributor {
                                    long periodInMillis,
                                    int batchSize) {
 
-        long delay = periodInMillis / batchSize + 1;
+        final long delay = periodInMillis / batchSize + 1;
         final Timer timer = new Timer();
 
         timer.scheduleAtFixedRate(
@@ -36,6 +36,8 @@ public final class TaskDistributor {
 
 
     }
+    //TODO: overload method for batchSize calculation  by delay interval
+    //TODO: check if tasks size < batch size => schedule for medium period
 
     public static void main(String[] args) {
         List<Item> itemsList = new ArrayList<>();
